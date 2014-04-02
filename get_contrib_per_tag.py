@@ -8,6 +8,7 @@
 __author__ = 'kevin'
 
 from datetime import datetime
+from subprocess import call
 import json
 import os
 import pygit2
@@ -21,6 +22,32 @@ class GitObjectType():
     commit = pygit2.GIT_OBJ_COMMIT
     tag = pygit2.GIT_OBJ_TAG
 
+class Tag():
+    """Represents a Tag in a git repository"""
+
+    def __init__(self, args):
+        """Constructor for Tag"""
+
+
+
+
+class GitRepository():
+    """Wraps pygit2's Repository object"""
+
+    def __init__(self, repo_path):
+        """Constructor for GitRepository"""
+
+        self.repo = pygit2.Repository(repo_path)
+
+    def get_tags(self):
+        """
+        Returns: List of all the tags in the repository
+
+        """
+        return
+
+
+
 
 def main(git_repo):
     repo_path = os.path.join(git_repo, git_folder)
@@ -32,7 +59,15 @@ def main(git_repo):
 
     tags.sort(key=lambda t: t['date'])
 
-    
+    os.chdir(git_repo)
+
+    for tag in tags:
+        call(["git", "checkout", "tags/" + tag])
+
+        # Call git by a bus
+        # Call get_top_contrib_per_file
+        # Delete git by a bus output folder
+
 
     print(json.dumps(tags, indent=2))
 
@@ -43,4 +78,4 @@ if __name__ == '__main__':
     #     sys.exit(1)
 
     # main(sys.argv[1])
-    main("/home/kevin/Desktop/facebook-android-sdk")
+    main("/home/kevin/Desktop/facebook-android-sdk/")
