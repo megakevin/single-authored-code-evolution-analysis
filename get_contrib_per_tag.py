@@ -76,8 +76,11 @@ def main(git_repo):
         os.chdir(exec_dir)
         call(["python", git_by_a_bus_executable, "-o", "gbab_output_" + tag['name'], git_repo])
 
-        # Call get_top_contrib_per_file
-        # Delete git by a bus output folder
+        call(["python3",
+              "get_top_contrib_per_file.py",
+              os.path.join("gbab_output_" + tag['name'], "estimate_unique_knowledge.tsv"),
+              "contribs",
+              "contrib_" + tag['name'] + ".csv"])
 
     os.chdir(git_repo)
     call(["git", "checkout", "master"])
