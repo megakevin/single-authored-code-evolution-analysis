@@ -14,6 +14,7 @@ import os
 import pygit2
 
 git_folder = ".git/"
+git_by_a_bus_executable = "/home/kevin/Desktop/git_by_a_bus/git_by_a_bus.py"
 
 
 class GitObjectType():
@@ -27,6 +28,13 @@ class Tag():
 
     def __init__(self, args):
         """Constructor for Tag"""
+
+
+class GitRepository():
+    """Wraps around the pygit2's Repository class"""
+
+    def __init__(self, ):
+        """Constructor for GitRepository"""
 
 
 
@@ -59,17 +67,21 @@ def main(git_repo):
 
     tags.sort(key=lambda t: t['date'])
 
-    os.chdir(git_repo)
+    exec_dir = os.getcwd()
 
     for tag in tags:
-        call(["git", "checkout", "tags/" + tag])
+        os.chdir(git_repo)
+        call(["git", "checkout", "tags/" + tag['name']])
 
-        # Call git by a bus
+        os.chdir(exec_dir)
+        call(["python", git_by_a_bus_executable, "-o", "gbab_output_" + tag['name'], git_repo])
+
         # Call get_top_contrib_per_file
         # Delete git by a bus output folder
 
-
-    print(json.dumps(tags, indent=2))
+    os.chdir(git_repo)
+    call(["git", "checkout", "master"])
+    os.chdir(exec_dir)
 
 
 if __name__ == '__main__':
