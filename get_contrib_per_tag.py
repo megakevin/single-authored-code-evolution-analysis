@@ -9,9 +9,12 @@ __author__ = 'kevin'
 
 from datetime import datetime
 from subprocess import call
+from shutil import copytree
+import math
 import sys
 import os
 import pygit2
+from multiprocessing import Process
 
 
 class GitObjectType():
@@ -32,6 +35,9 @@ class GitTag():
     def date_to_string(self, time):
         """Returns: A string representation of a UNIX timestamp"""
         return str(datetime.fromtimestamp(time))
+
+    def __str__(self):
+        return str({'name': self.name, 'date': self.date})
 
 
 class GitRepository():
@@ -56,52 +62,54 @@ class GitRepository():
         return tags
 
 
-class OSCommandDispatcher():
-    """Encapsulates os calls"""
-
-    def __init__(self):
-        """Constructor for CommandDispatcher"""
-        self.exec_dir = os.getcwd()
-
-    def chdir(self, dir):
-        os.chdir(dir)
-
-    def go_back_to_exec_dir(self):
-        self.chdir(self.exec_dir)
-
-    def call(self, command):
-        call(command)
-
-    def join_path(self, path, file):
-        return os.path.join(path, file)
-
-
 git_by_a_bus_executable = "/home/kevin/Desktop/git_by_a_bus/git_by_a_bus.py"
 get_top_contrib_per_file_file_name = "get_top_contrib_per_file.py"
 estimate_unique_knowledge_file_name = "estimate_unique_knowledge.tsv"
+degree_of_parallelism = 4
+
+
+def split(list, chunk_size):
+    return [list[i:i + chunk_size] for i in range(0, len(list), chunk_size)]
+
+
+def extract_contribution_data(git_repo, tags):
+    exec_dir = os.getcwd()
+
+    for tag in tags:
+        os.chdir(git_repo)
+        call(["git", "checkout", "tags/" + tag.name])
+
+        os.chdir(exec_dir)
+        call(["python", git_by_a_bus_executable, "-o", "gbab_output_" + tag.name, git_repo])
+
+        call(["python3",
+              get_top_contrib_per_file_file_name,
+              os.path.join("gbab_output_" + tag.name, estimate_unique_knowledge_file_name),
+              "contribs",
+              "contrib_" + tag.name + ".csv"])
+
+        print("tags/" + tag.name + " processed")
+
+    os.chdir(exec_dir)
+    call(["git", "checkout", "master"])
 
 
 def main(git_repo):
+
     repo = GitRepository(git_repo)
     tags = repo.get_tags()
 
-    os_command = OSCommandDispatcher()
+    repo_copies = [git_repo[:-1] + "-" + str(i) + "/" for i in range(degree_of_parallelism)]
+    tag_groups = split(tags, math.ceil(len(tags)/degree_of_parallelism))
 
-    for tag in tags:
-        os_command.chdir(git_repo)
-        os_command.call(["git", "checkout", "tags/" + tag.name])
+    for repo_copy in repo_copies:
+        copytree(git_repo, repo_copy, symlinks=True)
 
-        os_command.go_back_to_exec_dir()
-        os_command.call(["python", git_by_a_bus_executable, "-o", "gbab_output_" + tag.name, git_repo])
+    for repo_copy, tags in zip(repo_copies, tag_groups):
+        p = Process(target=extract_contribution_data, args=(repo_copy, tags))
+        p.start()
 
-        os_command.call(["python3",
-                         get_top_contrib_per_file_file_name,
-                         os.path.join("gbab_output_" + tag.name, estimate_unique_knowledge_file_name),
-                         "contribs",
-                         "contrib_" + tag.name + ".csv"])
-
-    os_command.chdir(git_repo)
-    os_command.call(["git", "checkout", "master"])
+    print("lol")
 
 
 if __name__ == '__main__':
