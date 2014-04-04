@@ -106,7 +106,7 @@ def extract_contribution_data(git_repo, tags):
 
         print("tags/" + tag.name + " processed")
 
-    os.chdir(exec_dir)
+    os.chdir(git_repo)
     call(["git", "checkout", "master"])
 
 
@@ -116,7 +116,7 @@ def main(git_repo):
     tags = repo.get_tags()
 
     # Use this to run process in a single thread.
-    #extract_contribution_data(git_repo, tags)
+    # extract_contribution_data(git_repo, tags)
 
     # Use this to run process in parallel
     repo_copies = [git_repo[:-1] + "-" + str(i) + "/" for i in range(degree_of_parallelism)]
@@ -128,7 +128,7 @@ def main(git_repo):
     for repo_copy, tags in zip(repo_copies, tag_groups):
         p = Process(target=extract_contribution_data, args=(repo_copy, tags))
         p.start()
-
+    #
     # for repo_copy in repo_copies:
     #     rmtree(repo_copy)
 
