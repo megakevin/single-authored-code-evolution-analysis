@@ -9,7 +9,7 @@ __author__ = 'kevin'
 
 from datetime import datetime
 from subprocess import call
-from shutil import copytree
+from shutil import copytree, rmtree
 import math
 import sys
 import os
@@ -63,8 +63,9 @@ class GitRepository():
 
 
 git_by_a_bus_executable = "/home/kevin/Desktop/git_by_a_bus/git_by_a_bus.py"
-get_top_contrib_per_file_file_name = "get_top_contrib_per_file.py"
+get_top_contrib_per_file_executable = "get_top_contrib_per_file.py"
 estimate_unique_knowledge_file_name = "estimate_unique_knowledge.tsv"
+contributions_output_dir = "/home/kevin/Desktop/contrib-output/"
 degree_of_parallelism = 4
 
 
@@ -77,16 +78,25 @@ def extract_contribution_data(git_repo, tags):
 
     for tag in tags:
         os.chdir(git_repo)
+
         call(["git", "checkout", "tags/" + tag.name])
 
         os.chdir(exec_dir)
-        call(["python", git_by_a_bus_executable, "-o", "gbab_output_" + tag.name, git_repo])
+
+        call(["python",
+              git_by_a_bus_executable,
+              "-o", os.path.join(contributions_output_dir, "gbab_output_" + tag.name),
+              git_repo])
 
         call(["python3",
-              get_top_contrib_per_file_file_name,
-              os.path.join("gbab_output_" + tag.name, estimate_unique_knowledge_file_name),
-              "contribs",
+              get_top_contrib_per_file_executable,
+              os.path.join(contributions_output_dir,
+                           "gbab_output_" + tag.name,
+                           estimate_unique_knowledge_file_name),
+              contributions_output_dir,
               "contrib_" + tag.name + ".csv"])
+
+        rmtree(os.path.join(contributions_output_dir, "gbab_output_" + tag.name))
 
         print("tags/" + tag.name + " processed")
 
@@ -99,6 +109,10 @@ def main(git_repo):
     repo = GitRepository(git_repo)
     tags = repo.get_tags()
 
+    # Use this to run process in a single thread.
+    #extract_contribution_data(git_repo, tags)
+
+    # Use this to run process in parallel
     repo_copies = [git_repo[:-1] + "-" + str(i) + "/" for i in range(degree_of_parallelism)]
     tag_groups = split(tags, math.ceil(len(tags)/degree_of_parallelism))
 
@@ -108,6 +122,11 @@ def main(git_repo):
     for repo_copy, tags in zip(repo_copies, tag_groups):
         p = Process(target=extract_contribution_data, args=(repo_copy, tags))
         p.start()
+
+
+
+    # for repo_copy in repo_copies:
+    #     rmtree(repo_copy)
 
     print("lol")
 
