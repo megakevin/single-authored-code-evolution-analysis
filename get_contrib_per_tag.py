@@ -8,29 +8,36 @@
 __author__ = 'kevin'
 
 from datetime import datetime
-from subprocess import call
+from subprocess import call, check_output
 from shutil import copytree, rmtree
 import math
 import sys
 import os
-import pygit2
 from multiprocessing import Process
-
-
-class GitObjectType():
-    """Defines Git object types in terms of pygiy2's GIT_OBJs"""
-
-    commit = pygit2.GIT_OBJ_COMMIT
-    tag = pygit2.GIT_OBJ_TAG
-
 
 class GitTag():
     """Represents a Tag in a git repository"""
 
-    def __init__(self, name, time):
-        """Constructor for Tag"""
-        self.name = name
-        self.date = self.date_to_string(time)
+    def __init__(self, line):
+        raw_tag, raw_hash, raw_date, raw_timestamp = line.split("|")
+
+        # process the hash:
+        self.tag_hash = raw_hash.strip()
+
+        # process the timestamp
+        self.tag_timestamp = float(raw_timestamp.strip())
+
+        # process the datetime
+        self.date = raw_date.strip()
+
+        raw_tag = raw_tag.split("tag:")[1]
+        # get the git-tag
+        if "," in raw_tag:
+            self.name = raw_tag.split(",")[0].strip()
+        else:
+            self.name = raw_tag.replace(")", "").strip()
+
+
 
     def date_to_string(self, time):
         """Returns: A string representation of a UNIX timestamp"""
@@ -41,21 +48,20 @@ class GitTag():
 
 
 class GitRepository():
-    """Wraps around the pygit2's Repository class"""
 
     git_folder = ".git/"
 
     def __init__(self, repo_path):
         """Constructor for GitRepository"""
-        repo_path = os.path.join(repo_path, GitRepository.git_folder)
-        self.repo = pygit2.Repository(repo_path)
+        self.repo_path = repo_path
 
     def get_tags(self):
         """Returns: List of all the tags in the repository"""
 
-        tags = [GitTag(self.repo[obj_hex].name,
-                       self.repo[obj_hex].get_object().commit_time)
-                for obj_hex in self.repo if self.repo[obj_hex].type == GitObjectType.tag]
+        cmd_get_tags = 'cd {0}; git log --tags --simplify-by-decoration --pretty="format:%d | %H | %ai | %at" |grep "tag:"'.format(self.repo_path)
+        results_cmd = check_output(cmd_get_tags, shell=True).decode("utf-8")
+
+        tags = [GitTag(str(line)) for line in results_cmd.splitlines()]
 
         tags.sort(key=lambda t: t.date)
 
@@ -122,8 +128,6 @@ def main(git_repo):
     for repo_copy, tags in zip(repo_copies, tag_groups):
         p = Process(target=extract_contribution_data, args=(repo_copy, tags))
         p.start()
-
-
 
     # for repo_copy in repo_copies:
     #     rmtree(repo_copy)
