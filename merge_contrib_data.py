@@ -1,5 +1,5 @@
-# Usage: $ python3 merge_contrib_data.py /home/kevin/Desktop/contribs-facebook-android-sdk/
-#          python3 merge_contrib_data.py <contributions_per_tag_directory>
+# Usage: $ python3 merge_contrib_data.py /home/kevin/Desktop/contribs-facebook-android-sdk/ /home/kevin/Desktop/merge_contrib.csv
+#          python3 merge_contrib_data.py <contributions_per_tag_directory> <output_file>
 #
 # Merges all the extracted contribution per tag data into one single file.
 
@@ -9,7 +9,6 @@ import sys
 import csv
 import os
 
-output_file = "output.csv"
 contrib_file_prefix = "contrib_"
 contrib_file_extension = ".csv"
 single_authored_threshold = 90.0
@@ -27,10 +26,9 @@ def format_dict(raw_data, release):
 
 def main(argv):
 
-    # contrib_data_dir = argv[1]
-    # project_name = argv[2]
-
-    contrib_data_dir = "/home/kevin/Desktop/contribs-facebook-android-sdk/"
+    contrib_data_dir = argv[1]
+    output_file = argv[2]
+    # project_name = argv[3]
 
     result = []
 
