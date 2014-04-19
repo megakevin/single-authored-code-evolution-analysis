@@ -55,6 +55,7 @@ class KnowledgeFileData():
 
         self.file_name, self.lines_count, self.dev_experience, self.total_knowledge, self.dev_unique = fields
 
+        self.file_name = self.file_name[self.file_name.index(":") + 1:]  # to clean the file_name
         self.lines_count = int(self.lines_count)
         self.total_knowledge = float(self.total_knowledge)
         self.dev_unique = [Contribution(c) for c in self.parse_dev_shared(self.dev_unique)]

@@ -1,4 +1,4 @@
-#Usage: $ python3 get_contrib_per_tag.py /home/kevin/Desktop/facebook-android-sdk
+# Usage: $ python3 get_bug_commit_ratio_per_tag.py /home/kevin/Desktop/evolution-project/repos/facebook-android-sdk ./output/
 
 # Runs Git By A Bus on every tag of the specified repository
 # and extracts the file-level contribution information using
@@ -9,11 +9,8 @@ __author__ = 'kevin'
 
 from datetime import datetime
 from subprocess import call, check_output
-from shutil import copytree, rmtree
-import math
 import sys
 import os
-from multiprocessing import Process
 
 class GitTag():
     """Represents a Tag in a git repository"""
@@ -68,42 +65,22 @@ class GitRepository():
         return tags
 
 
-git_by_a_bus_executable = "/home/kevin/Documents/git_by_a_bus/git_by_a_bus.py"
-get_top_contrib_per_file_executable = "get_top_contrib_per_file.py"
-estimate_unique_knowledge_file_name = "estimate_unique_knowledge.tsv"
-contributions_output_dir = "/home/kevin/Desktop/evolution-project/"
-degree_of_parallelism = 2
+get_bug_commit_per_file_executable = "get_bug_commit_ratio_per_file.py"
+default_bug_commit_output_dir = "/home/kevin/Desktop/evolution-project/"
 
 
-def split(list, chunk_size):
-    # return [list[i:i + chunk_size] for i in range(0, len(list), chunk_size)] # ordered
-    return [list[i::chunk_size] for i in range(chunk_size)]  # Unordered
-
-
-def extract_contribution_data(git_repo, tags):
+def extract_bug_commit_data(git_repo, tags, output_dir):
     exec_dir = os.getcwd()
 
     for tag in tags:
         os.chdir(git_repo)
-
         call(["git", "checkout", "tags/" + tag.name])
 
         os.chdir(exec_dir)
-
-        call(["python",
-              git_by_a_bus_executable,
-              "-o", os.path.join(contributions_output_dir, "gbab_output_" + tag.name),
-              git_repo])
-
         call(["python3",
-              get_top_contrib_per_file_executable,
-              os.path.join(contributions_output_dir,
-                           "gbab_output_" + tag.name,
-                           estimate_unique_knowledge_file_name),
-              contributions_output_dir,
-              "contrib_" + tag.name + ".csv"])
-
-        rmtree(os.path.join(contributions_output_dir, "gbab_output_" + tag.name))
+              get_bug_commit_per_file_executable,
+              git_repo,
+              os.path.join(output_dir, "bug-commit-" + tag.name + ".csv")])
 
         print("tags/" + tag.name + " processed")
 
@@ -111,30 +88,26 @@ def extract_contribution_data(git_repo, tags):
     call(["git", "checkout", "master"])
 
 
-def main(git_repo):
+def main(git_repo, output_dir):
 
     repo = GitRepository(git_repo)
     tags = repo.get_tags()
 
-    # Use this to run process in a single thread.
-    extract_contribution_data(git_repo, tags)
+    try:
+        os.makedirs(output_dir)
+    except FileExistsError as ex:
+        pass
 
-    # Use this to run process in parallel
-    # repo_copies = [git_repo[:-1] + "-" + str(i) + "/" for i in range(degree_of_parallelism)]
-    # tag_groups = split(tags, math.ceil(len(tags)/degree_of_parallelism))
-    #
-    # for repo_copy in repo_copies:
-    #     copytree(git_repo, repo_copy, symlinks=True)
-    #
-    # for repo_copy, tags in zip(repo_copies, tag_groups):
-    #     p = Process(target=extract_contribution_data, args=(repo_copy, tags))
-    #     p.start()
+    # Use this to run process in a single thread.
+    extract_bug_commit_data(git_repo, tags, output_dir)
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        print("USAGE {0} <repository_root>".format(__file__))
-        sys.exit(1)
+    repo_path = sys.argv[1]
 
-    main(sys.argv[1])
+    output_dir = default_bug_commit_output_dir
+    if len(sys.argv) > 2:
+        output_dir = sys.argv[2]
+
+    main(repo_path, output_dir)
     # main("/home/kevin/Desktop/facebook-android-sdk/")
