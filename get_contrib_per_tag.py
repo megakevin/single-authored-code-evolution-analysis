@@ -71,7 +71,7 @@ class GitRepository():
 git_by_a_bus_executable = "/home/kevin/Documents/git_by_a_bus/git_by_a_bus.py"
 get_top_contrib_per_file_executable = "get_top_contrib_per_file.py"
 estimate_unique_knowledge_file_name = "estimate_unique_knowledge.tsv"
-contributions_output_dir = "/home/kevin/Desktop/evolution-project/"
+default_output_path = "/home/kevin/Desktop/evolution-project/"
 degree_of_parallelism = 2
 
 
@@ -80,7 +80,10 @@ def split(list, chunk_size):
     return [list[i::chunk_size] for i in range(chunk_size)]  # Unordered
 
 
-def extract_contribution_data(git_repo, tags):
+def extract_contribution_data(git_repo, tags, contributions_output_dir):
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
+
     exec_dir = os.getcwd()
 
     for tag in tags:
@@ -111,13 +114,13 @@ def extract_contribution_data(git_repo, tags):
     call(["git", "checkout", "master"])
 
 
-def main(git_repo):
+def main(git_repo, output_dir):
 
     repo = GitRepository(git_repo)
     tags = repo.get_tags()
 
     # Use this to run process in a single thread.
-    extract_contribution_data(git_repo, tags)
+    extract_contribution_data(git_repo, tags, output_dir)
 
     # Use this to run process in parallel
     # repo_copies = [git_repo[:-1] + "-" + str(i) + "/" for i in range(degree_of_parallelism)]
@@ -127,7 +130,7 @@ def main(git_repo):
     #     copytree(git_repo, repo_copy, symlinks=True)
     #
     # for repo_copy, tags in zip(repo_copies, tag_groups):
-    #     p = Process(target=extract_contribution_data, args=(repo_copy, tags))
+    #     p = Process(target=extract_contribution_data, args=(repo_copy, tags, output_dir))
     #     p.start()
 
 
@@ -136,5 +139,11 @@ if __name__ == '__main__':
         print("USAGE {0} <repository_root>".format(__file__))
         sys.exit(1)
 
-    main(sys.argv[1])
+    repo_path = sys.argv[1]
+    output_path = default_output_path
+
+    if len(sys.argv) > 2:
+        output_path = sys.argv[2]
+
+    main(repo_path, output_path)
     # main("/home/kevin/Desktop/facebook-android-sdk/")
