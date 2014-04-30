@@ -102,11 +102,11 @@ def extract_metrics_for_tags_in_repo(repo_path):
         
         # Getting file list
         print "\tGetting file list..."        
-        os.system('dir {0}*.java /B /S > C:/cmtdata/filelist.txt'.format(repo_path))
+        os.system('dir {0}*.java /B /S > C:/cmtdata/temp/filelist.txt'.format(repo_path))
         
         # Analyze the code
         print "\tGetting the metrics.."
-        os.system('cmtjava -f C:/cmtdata/filelist.txt -x -s -o C:/cmtdata/report-{0}.xls'.format(tag.name))
+        os.system('cmtjava -f C:/cmtdata/filelist.txt -x -s -o C:/cmtdata/testwell-{0}.xls'.format(tag.name))
 
         # Report progress and speed
         if counter % 2 == 0:
