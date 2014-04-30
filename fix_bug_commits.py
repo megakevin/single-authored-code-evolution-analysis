@@ -5,6 +5,9 @@ from subprocess import call, check_output
 import sys
 import os
 import csv
+import copy
+
+import tag_lists
 
 class GitTag():
     """Represents a Tag in a git repository"""
@@ -52,7 +55,9 @@ class GitRepository():
 
         tags = [GitTag(str(line)) for line in results_cmd.splitlines()]
 
-        tags.sort(key=lambda t: t.date)
+        # tags.sort(key=lambda t: t.date)
+
+
 
         return tags
 
@@ -78,6 +83,50 @@ def distinct(l, field_selector=None):
     return result
 
 
+def sort_tags(git_repo, tags):
+
+    result = []
+    ordered_tags = []
+
+    if 'apache-avro' in git_repo:
+        ordered_tags = tag_lists.apache_avro_releases
+    elif 'apache-mahout' in git_repo:
+        ordered_tags = tag_lists.apache_mahout_releases
+    elif 'apache-tika' in git_repo:
+        ordered_tags = tag_lists.apache_tika_releases
+    elif 'vrapper' in git_repo:
+        ordered_tags = tag_lists.vrapper_releases
+    elif 'apache-zookeeper' in git_repo:
+        ordered_tags = tag_lists.apache_zookeeper_releases
+    elif 'facebook-android-sdk' in git_repo:
+        ordered_tags = tag_lists.facebook_android_sdk_releases
+    elif 'github-android-app' in git_repo:
+        ordered_tags = tag_lists.github_android_app_releases
+    elif 'wordpress-android' in git_repo:
+        ordered_tags = tag_lists.wordpress_android_app
+
+    # tags_copy = copy.deepcopy(tags)
+
+    # for i, tag in enumerate(ordered_tags):
+    for tag in ordered_tags:
+        # tags[i] = [t for t in tags_copy if t.name == tag][0]
+        result.append([t for t in tags if t.name == tag][0])
+
+    # del tags[len(ordered_tags):]
+    return result
+
+
+def handle_negative(value, actual_version, past_version):
+    # return value
+
+    if value < 0:
+        if actual_version['loc'] == past_version['loc']:
+            return 0
+        else:
+            return int(actual_version['commit_num'])
+    else:
+        return value
+
 csv_header = ['file_name', 'release', 'is_sac', 'loc', 'commit_num', 'bug_commit_num', 'bug_commit_ratio']
 
 
@@ -87,7 +136,7 @@ def main():
     output_file = sys.argv[3]
 
     repo = GitRepository(git_repo)
-    tags = repo.get_tags()
+    tags = sort_tags(git_repo, repo.get_tags())
 
     with open(stats_file, "r") as stats_file:
         # 'file_name', 'release', 'is_sac', 'loc', 'commit_num', 'bug_commit_num', 'bug_commit_ratio'
@@ -96,29 +145,44 @@ def main():
     unique_files = distinct(stats, field_selector=lambda f: f['file_name'])
 
     for file in unique_files:
-
-        print("Processing file: " + file['file_name'])
+        # print("Processing file: " + file['file_name'])
 
         file_versions = [f for f in stats if f['file_name'] == file['file_name']]
         file_tags = [t for t in tags if t.name in [f['release'] for f in file_versions]]
-        file_tags.sort(key=lambda t: t.date)
-        file_tags = file_tags[::-1]
+        # file_tags.sort(key=lambda t: t.date)
+        # file_tags = file_tags[::-1]
+
+        fixed_values = {}
 
         for i, tag in enumerate(file_tags):
 
-            print("Processing tag: " + tag.name)
+            # print("Processing tag: " + tag.name)
 
             if i + 1 < len(file_tags):
+                # if not tag.date == file_tags[i + 1].date:
                 actual_version = [f for f in file_versions if f['release'] == tag.name][0]
                 past_version = [f for f in file_versions if f['release'] == file_tags[i + 1].name][0]
 
-                actual_version['commit_num'] = int(actual_version['commit_num']) - \
-                                               int(past_version['commit_num'])
-                actual_version['bug_commit_num'] = int(actual_version['bug_commit_num']) - \
-                                                   int(past_version['bug_commit_num'])
-                actual_version['bug_commit_ratio'] = (actual_version['bug_commit_num'] /
-                                                      actual_version['commit_num']) \
-                    if actual_version['commit_num'] != 0 else 0
+                commit_num = handle_negative(int(actual_version['commit_num']) - int(past_version['commit_num']),
+                                             actual_version,
+                                             past_version)
+
+                bug_commit_num = handle_negative(int(actual_version['bug_commit_num']) - int(past_version['bug_commit_num']),
+                                                 actual_version,
+                                                 past_version)
+
+                bug_commit_ratio = (bug_commit_num / commit_num) if commit_num != 0 else 0
+
+                fixed_values[tag.name] = {'commit_num': commit_num,
+                                          'bug_commit_num': bug_commit_num,
+                                          'bug_commit_ratio': bug_commit_ratio}
+
+        for tag, data in fixed_values.items():
+            actual_version = [f for f in file_versions if f['release'] == tag][0]
+
+            actual_version['commit_num'] = data['commit_num']
+            actual_version['bug_commit_num'] = data['bug_commit_num']
+            actual_version['bug_commit_ratio'] = data['bug_commit_ratio']
 
     with open(output_file, 'w', newline='') as output_file:
         writer = csv.DictWriter(output_file, csv_header)
