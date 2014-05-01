@@ -83,9 +83,8 @@ def distinct(l, field_selector=None):
     return result
 
 
-def sort_tags(git_repo, tags):
+def get_interesting_releases(git_repo):
 
-    result = []
     ordered_tags = []
 
     if 'apache-avro' in git_repo:
@@ -104,6 +103,14 @@ def sort_tags(git_repo, tags):
         ordered_tags = tag_lists.github_android_app_releases
     elif 'wordpress-android' in git_repo:
         ordered_tags = tag_lists.wordpress_android_app
+
+    return ordered_tags
+
+
+def sort_tags(git_repo, tags):
+
+    result = []
+    ordered_tags = get_interesting_releases(git_repo)
 
     # tags_copy = copy.deepcopy(tags)
 
@@ -140,7 +147,7 @@ def main():
 
     with open(stats_file, "r") as stats_file:
         # 'file_name', 'release', 'is_sac', 'loc', 'commit_num', 'bug_commit_num', 'bug_commit_ratio'
-        stats = [row for row in csv.DictReader(stats_file)]
+        stats = [row for row in csv.DictReader(stats_file) if row['release'] in get_interesting_releases(git_repo)]
 
     unique_files = distinct(stats, field_selector=lambda f: f['file_name'])
 
