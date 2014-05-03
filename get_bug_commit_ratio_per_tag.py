@@ -138,21 +138,21 @@ class GitRepository():
     def get_interesting_releases(self):
         ordered_tags = []
     
-        if 'apache-avro' in self.git_repo:
+        if 'apache-avro' in self.repo_path:
             ordered_tags = tag_lists.apache_avro_releases
-        elif 'apache-mahout' in self.git_repo:
+        elif 'apache-mahout' in self.repo_path:
             ordered_tags = tag_lists.apache_mahout_releases
-        elif 'apache-tika' in self.git_repo:
+        elif 'apache-tika' in self.repo_path:
             ordered_tags = tag_lists.apache_tika_releases
-        elif 'vrapper' in self.git_repo:
+        elif 'vrapper' in self.repo_path:
             ordered_tags = tag_lists.vrapper_releases
-        elif 'apache-zookeeper' in self.git_repo:
+        elif 'apache-zookeeper' in self.repo_path:
             ordered_tags = tag_lists.apache_zookeeper_releases
-        elif 'facebook-android-sdk' in self.git_repo:
+        elif 'facebook-android-sdk' in self.repo_path:
             ordered_tags = tag_lists.facebook_android_sdk_releases
-        elif 'github-android-app' in self.git_repo:
+        elif 'github-android-app' in self.repo_path:
             ordered_tags = tag_lists.github_android_app_releases
-        elif 'wordpress-android' in self.git_repo:
+        elif 'wordpress-android' in self.repo_path:
             ordered_tags = tag_lists.wordpress_android_app
     
         return ordered_tags
@@ -191,7 +191,7 @@ def first_or_default(l, default=None):
         return default
 
 
-csv_header = ['file_name', 'release', 'commit_num', 'bug_commit_num']  # 'bug_commit_ratio'
+csv_header = ['file_name', 'release', 'commit_num', 'bug_commit_num', 'bug_commit_ratio']
 
 
 def main(args):
@@ -232,8 +232,8 @@ def main(args):
                                    'commit_num': 1,
                                    'bug_commit_num': 1 if bug_related else 0})
 
-    # for entry in result:
-    #     entry['bug_commit_ratio'] = entry['bug_commit_num'] / entry['commit_num']
+    for entry in result:
+        entry['bug_commit_ratio'] = entry['bug_commit_num'] / entry['commit_num']
 
     with open(output_file, 'w', newline='') as output_file:
         writer = csv.DictWriter(output_file, csv_header)
