@@ -50,6 +50,7 @@ class GitCommit():
     def get_commits_command(git_repo):
         get_commits_command = 'cd {0}; git log --pretty="format:' \
                               '%H<commit_data_separator>' \
+                              '%an<commit_data_separator>' \
                               '%ai<commit_data_separator>' \
                               '%at<commit_data_separator>' \
                               '%b<commit_entry_separator>"'.format(git_repo)
@@ -57,9 +58,10 @@ class GitCommit():
         return get_commits_command
 
     def __init__(self, line, repo):
-        raw_hash, raw_date, raw_timestamp, raw_body = line.split(GitCommit.line_separator)
+        raw_hash, raw_author, raw_date, raw_timestamp, raw_body = line.split(GitCommit.line_separator)
 
         self.hash = raw_hash.strip()
+        self.author = raw_author.strip()
         self.date = datetime.fromtimestamp(float(raw_timestamp))
         self.timestamp = float(raw_timestamp)
         self.date_as_str = raw_date
@@ -166,7 +168,7 @@ def first_or_default(l, default=None):
         return default
 
 
-csv_header = ['file_name', 'release', 'commit_num', 'bug_commit_num', 'bug_commit_ratio']
+csv_header = ['release', 'authors', 'num_authors']
 
 
 def main(args):
@@ -180,39 +182,29 @@ def main(args):
     result = []
     initial_date = None
 
-    # for tag in tags:
-        # final_date = tag.date
-        #
-        # if initial_date:
-        #     commits_in_tag = [c for c in commits if initial_date < c.date <= final_date]
-        # else:
-        #     commits_in_tag = [c for c in commits if c.date <= final_date]
-        #
-        # initial_date = final_date
+    for tag in tags:
 
-    commits_in_tag = commits
+        authors = {}
+        final_date = tag.date
 
-    for commit in commits_in_tag:
-        touched_files = commit.get_touched_files()
-        bug_related = commit.is_bug_related()
+        if initial_date:
+            commits_in_tag = [c for c in commits if initial_date < c.date <= final_date]
+        else:
+            commits_in_tag = [c for c in commits if c.date <= final_date]
 
-        for file in touched_files:
-            # file_data = first_or_default([f for f in result if f['release'] == tag.name and f['file_name'] == file])
-            # As we're taking every commit to calculate, just put the numbers in the last tag. So, we do tags[-1]
-            file_data = first_or_default([f for f in result if f['release'] == tags[-1].name and f['file_name'] == file])
+        initial_date = final_date
 
-            if file_data:
-                file_data['commit_num'] += 1
-                if bug_related:
-                    file_data['bug_commit_num'] += 1
+        # commits_in_tag = commits
+
+        for commit in commits_in_tag:
+            if commit.author in authors:
+                authors[commit.author] += 1
             else:
-                result.append({'file_name': file,
-                               'release': tags[-1].name, #tag.name, #
-                               'commit_num': 1,
-                               'bug_commit_num': 1 if bug_related else 0})
+                authors[commit.author] = 1
 
-    for entry in result:
-        entry['bug_commit_ratio'] = entry['bug_commit_num'] / entry['commit_num']
+        result.append({'release': tag.name,
+                       'authors': ':'.join(authors),
+                       'num_authors': len(authors)})
 
     with open(output_file, 'w', newline='') as output_file:
         writer = csv.DictWriter(output_file, csv_header)
