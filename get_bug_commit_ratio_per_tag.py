@@ -1,13 +1,8 @@
 # Usage: $ python3 get_bug_commit_ratio_per_tag.py /home/kevin/Desktop/evolution-project/repos/facebook-android-sdk ./output/
 
-# Runs Git By A Bus on every tag of the specified repository
-# and extracts the file-level contribution information using
-# the get_top_contrib_per_file script.
-
-
 __author__ = 'kevin'
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from subprocess import call, check_output
 import sys
 import os
@@ -110,8 +105,9 @@ class GitRepository():
         results = check_output(cmd_get_tags, shell=True).decode("utf-8")
 
         tags = [GitTag(str(line)) for line in results.splitlines()]
+        tags = [t for t in tags if t.name in self.get_interesting_releases()]
+
         tags.sort(key=lambda t: t.date)
-        # tags = self.sort_tags(tags)
 
         return tags
 
@@ -158,28 +154,6 @@ class GitRepository():
         return ordered_tags
 
 
-get_bug_commit_per_file_executable = "get_bug_commit_ratio_per_file.py"
-
-
-def extract_bug_commit_data(git_repo, tags, output_dir):
-    exec_dir = os.getcwd()
-
-    for tag in tags:
-        os.chdir(git_repo)
-        call(["git", "checkout", "tags/" + tag.name])
-
-        os.chdir(exec_dir)
-        call(["python3",
-              get_bug_commit_per_file_executable,
-              git_repo,
-              os.path.join(output_dir, "bug-commit-" + tag.name + ".csv")])
-
-        print("tags/" + tag.name + " processed")
-
-    os.chdir(git_repo)
-    call(["git", "checkout", "master"])
-
-
 def reverse(l):
     return l[::-1]
 
@@ -205,32 +179,36 @@ def main(args):
     result = []
     initial_date = None
 
-    for tag in tags:
-        final_date = tag.date
+    # for tag in tags:
+        # final_date = tag.date
+        #
+        # if initial_date:
+        #     commits_in_tag = [c for c in commits if initial_date < c.date <= final_date]
+        # else:
+        #     commits_in_tag = [c for c in commits if c.date <= final_date]
+        #
+        # initial_date = final_date
 
-        if initial_date:
-            commits_in_tag = [c for c in commits if initial_date < c.date <= final_date]
-        else:
-            commits_in_tag = [c for c in commits if c.date <= final_date]
+    commits_in_tag = commits
 
-        initial_date = final_date
+    for commit in commits_in_tag:
+        touched_files = commit.get_touched_files()
+        bug_related = commit.is_bug_related()
 
-        for commit in commits_in_tag:
-            touched_files = commit.get_touched_files()
-            bug_related = commit.is_bug_related()
+        for file in touched_files:
+            # file_data = first_or_default([f for f in result if f['release'] == tag.name and f['file_name'] == file])
+            # As we're taking every commit to calculate, just put the numbers in the last tag. So, we do tags[-1]
+            file_data = first_or_default([f for f in result if f['release'] == tags[-1].name and f['file_name'] == file])
 
-            for file in touched_files:
-                file_data = first_or_default([f for f in result if f['release'] == tag.name and f['file_name'] == file])
-
-                if file_data:
-                    file_data['commit_num'] += 1
-                    if bug_related:
-                        file_data['bug_commit_num'] += 1
-                else:
-                    result.append({'file_name': file,
-                                   'release': tag.name,
-                                   'commit_num': 1,
-                                   'bug_commit_num': 1 if bug_related else 0})
+            if file_data:
+                file_data['commit_num'] += 1
+                if bug_related:
+                    file_data['bug_commit_num'] += 1
+            else:
+                result.append({'file_name': file,
+                               'release': tags[-1].name, #tag.name, #
+                               'commit_num': 1,
+                               'bug_commit_num': 1 if bug_related else 0})
 
     for entry in result:
         entry['bug_commit_ratio'] = entry['bug_commit_num'] / entry['commit_num']
